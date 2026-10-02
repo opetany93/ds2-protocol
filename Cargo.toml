@@ -2,6 +2,7 @@
 name = "ds2-protocol"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.85.0"
 description = "no_std implementation of BMW's DS2 diagnostic protocol"
 license = "MPL-2.0"
 repository = "https://github.com/opetany93/ds2-protocol"

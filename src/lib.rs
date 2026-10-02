@@ -17,6 +17,20 @@ pub enum Error {
     InvalidLength,
 }
 
+impl core::fmt::Display for Error {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::Timeout => f.write_str("response timeout"),
+            Self::Checksum => f.write_str("response checksum mismatch"),
+            Self::UnexpectedAddress(address) => {
+                write!(f, "response from unexpected address 0x{address:02X}")
+            }
+            Self::CommandTooLong => f.write_str("command too long"),
+            Self::InvalidLength => f.write_str("invalid response length"),
+        }
+    }
+}
+
 const HEADER_LEN: usize = 2;
 const CHECKSUM_LEN: usize = 1;
 const MAX_FRAME_LEN: usize = 255;
