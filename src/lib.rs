@@ -31,6 +31,8 @@ impl core::fmt::Display for Error {
     }
 }
 
+impl core::error::Error for Error {}
+
 const HEADER_LEN: usize = 2;
 const CHECKSUM_LEN: usize = 1;
 const MAX_FRAME_LEN: usize = 255;
