@@ -1,0 +1,12 @@
+[package]
+name = "ds2-protocol"
+version = "0.1.0"
+edition = "2024"
+description = "no_std implementation of BMW's DS2 diagnostic protocol"
+license = "MPL-2.0"
+repository = "https://github.com/opetany93/ds2-protocol"
+documentation = "https://docs.rs/ds2-protocol"
+keywords = ["embedded", "bmw", "diagnostics", "kline", "ds2"]
+categories = ["embedded", "no-std", "hardware-support"]
+
+[dependencies]
