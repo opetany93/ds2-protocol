@@ -6,11 +6,20 @@
 
 ## Frame format
 
+Request:
+
 ```
-| address | length | data ... | checksum |
+| address | length | command ... | checksum |
 ```
 
-- `length` covers the whole frame, including address and checksum (3 to 255 bytes).
+Response:
+
+```
+| address | length | status | data ... | checksum |
+```
+
+- `length` covers the whole frame, including address and checksum (up to 255 bytes; at least 3 for a request, 4 for a response).
+- `status` is `0xA0` on success.
 - `checksum` is the XOR of all preceding bytes.
 
 Example: command `00` to address `0x12` is sent as `12 04 00 16`.
@@ -37,7 +46,7 @@ let mut ds2 = Ds2::new(Uart { /* ... */ }, Duration::from_millis(100));
 let payload = ds2.request(0x12, &[0x00])?;
 ```
 
-`request` returns the response payload, without address, length and checksum.
+`request` returns the response data, without address, length, status and checksum.
 
 `receive` may return fewer bytes than requested; the library keeps reading until the frame is complete. A return value of `0` is treated as a timeout.
 
@@ -48,7 +57,9 @@ let payload = ds2.request(0x12, &[0x00])?;
 | `Timeout` | `receive` returned 0 before the full frame arrived |
 | `Checksum` | Response checksum does not match |
 | `UnexpectedAddress(u8)` | Response came from a different address than requested |
-| `InvalidLength` | Response length byte is below 3 |
+| `InvalidLength` | Response is shorter than 4 bytes |
+| `WrongResponseStatus(ResponseStatus)` | ECU answered with a status other than `0xA0` |
+| `UnknownResponseStatus(u8)` | Status byte is not a known DS2 status |
 | `CommandTooLong` | Command exceeds 252 bytes; nothing is sent |
 
 ## Tests
