@@ -15,6 +15,8 @@ pub enum Error {
     /// Command longer than 252 bytes.
     CommandTooLong,
     InvalidLength,
+    WrongResponseStatus(ResponseStatus),
+    UnknownResponseStatus(u8),
 }
 
 impl core::fmt::Display for Error {
@@ -27,13 +29,84 @@ impl core::fmt::Display for Error {
             }
             Self::CommandTooLong => f.write_str("command too long"),
             Self::InvalidLength => f.write_str("invalid response length"),
+            Self::WrongResponseStatus(status) => {
+                write!(f, "wrong response status: {status}")
+            }
+            Self::UnknownResponseStatus(status) => {
+                write!(f, "unknown response status 0x{status:02X}")
+            }
         }
     }
 }
 
 impl core::error::Error for Error {}
 
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ResponseStatus {
+    ConditionsNotMet = 0x01,
+    InvalidParameters = 0x02,
+    FunctionNotStarted = 0x05,
+    FunctionDone = 0x06,
+    AifNotProgrammed = 0x11,
+    Ok = 0xA0,
+    Busy = 0xA1,
+    Rejected = 0xA2,
+    Parameter = 0xB0,
+    Function = 0xB1,
+    Number = 0xB2,
+    Nack = 0xFF,
+}
+
+impl TryFrom<u8> for ResponseStatus {
+    type Error = u8;
+
+    fn try_from(b: u8) -> Result<Self, Self::Error> {
+        Ok(match b {
+            0x01 => Self::ConditionsNotMet,
+            0x02 => Self::InvalidParameters,
+            0x05 => Self::FunctionNotStarted,
+            0x06 => Self::FunctionDone,
+            0x11 => Self::AifNotProgrammed,
+            0xA0 => Self::Ok,
+            0xA1 => Self::Busy,
+            0xA2 => Self::Rejected,
+            0xB0 => Self::Parameter,
+            0xB1 => Self::Function,
+            0xB2 => Self::Number,
+            0xFF => Self::Nack,
+            other => return Err(other),
+        })
+    }
+}
+
+impl ResponseStatus {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::ConditionsNotMet => "conditions not met",
+            Self::InvalidParameters => "invalid parameters",
+            Self::FunctionNotStarted => "function not started",
+            Self::FunctionDone => "function done",
+            Self::AifNotProgrammed => "AIF not programmed",
+            Self::Ok => "ok",
+            Self::Busy => "busy",
+            Self::Rejected => "rejected",
+            Self::Parameter => "parameter error",
+            Self::Function => "function error",
+            Self::Number => "number error",
+            Self::Nack => "not acknowledged",
+        }
+    }
+}
+
+impl core::fmt::Display for ResponseStatus {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 const HEADER_LEN: usize = 2;
+const STATUS_LEN: usize = 1;
 const CHECKSUM_LEN: usize = 1;
 const MAX_FRAME_LEN: usize = 255;
 
@@ -58,7 +131,7 @@ impl<T: SerialLink> Ds2<T> {
         }
     }
 
-    /// Returns the response payload without header and checksum.
+    /// Returns the response payload without header, status and checksum.
     pub fn request(&mut self, address: u8, command: &[u8]) -> Result<&[u8], Error> {
         self.send_command(address, command)?;
         let len = Self::receive_response(
@@ -71,7 +144,18 @@ impl<T: SerialLink> Ds2<T> {
             return Err(Error::UnexpectedAddress(self.response[0]));
         }
 
-        Ok(&self.response[HEADER_LEN..len - CHECKSUM_LEN])
+        if (HEADER_LEN + STATUS_LEN + CHECKSUM_LEN) > len {
+            return Err(Error::InvalidLength);
+        }
+
+        let status = ResponseStatus::try_from(self.response[HEADER_LEN])
+            .map_err(Error::UnknownResponseStatus)?;
+
+        if ResponseStatus::Ok != status {
+            return Err(Error::WrongResponseStatus(status));
+        }
+
+        Ok(&self.response[HEADER_LEN + STATUS_LEN..len - CHECKSUM_LEN])
     }
 
     fn send_command(&mut self, address: u8, command: &[u8]) -> Result<(), Error> {

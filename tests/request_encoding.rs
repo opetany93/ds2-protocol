@@ -2,13 +2,13 @@
 
 mod common;
 
-use common::{MAX_PAYLOAD_LEN, MockLink, TIMEOUT, build_frame, xor_checksum};
+use common::{MAX_PAYLOAD_LEN, MockLink, TIMEOUT, build_frame, build_ok_response, xor_checksum};
 use ds2_protocol::{Ds2, Error};
 
 const DME_ADDRESS: u8 = 0x12;
 
 fn link_answering_with_empty_payload() -> MockLink {
-    MockLink::with_incoming(&build_frame(DME_ADDRESS, &[]))
+    MockLink::with_incoming(&build_ok_response(DME_ADDRESS, &[]))
 }
 
 #[test]
@@ -104,8 +104,8 @@ fn transmits_nothing_when_command_too_long() {
 #[test]
 fn transmits_once_per_request() {
     let link = MockLink::new();
-    link.queue_incoming(&build_frame(DME_ADDRESS, &[]));
-    link.queue_incoming(&build_frame(DME_ADDRESS, &[]));
+    link.queue_incoming(&build_ok_response(DME_ADDRESS, &[]));
+    link.queue_incoming(&build_ok_response(DME_ADDRESS, &[]));
     let mut ds2 = Ds2::new(link.clone(), TIMEOUT);
 
     ds2.request(DME_ADDRESS, &[0x01]).unwrap();

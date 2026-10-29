@@ -16,6 +16,9 @@ pub const TIMEOUT: Duration = Duration::from_millis(100);
 pub const MIN_FRAME_LEN: usize = 3;
 pub const MAX_FRAME_LEN: usize = 255;
 pub const MAX_PAYLOAD_LEN: usize = MAX_FRAME_LEN - MIN_FRAME_LEN;
+pub const STATUS_OK: u8 = 0xA0;
+const STATUS_LEN: usize = 1;
+pub const MAX_RESPONSE_DATA_LEN: usize = MAX_PAYLOAD_LEN - STATUS_LEN;
 
 #[derive(Default)]
 struct LinkState {
@@ -96,4 +99,9 @@ pub fn build_frame(address: u8, payload: &[u8]) -> Vec<u8> {
     frame.extend_from_slice(payload);
     frame.push(xor_checksum(&frame));
     frame
+}
+
+pub fn build_ok_response(address: u8, data: &[u8]) -> Vec<u8> {
+    let payload: Vec<u8> = [STATUS_OK].iter().chain(data).copied().collect();
+    build_frame(address, &payload)
 }
